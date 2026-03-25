@@ -7,10 +7,12 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import express from "express";
 
 import { ArkadeWallet } from "./wallet.js";
 import { EscrowManager } from "./escrow.js";
@@ -31,16 +33,9 @@ const config: WalletConfig = {
 const arkadeWallet = new ArkadeWallet(config);
 const escrowManager = new EscrowManager(arkadeWallet);
 
-// ─── MCP Server ──────────────────────────────────────────────────────────────
+// ─── MCP Tool Handlers ───────────────────────────────────────────────────────
 
-const server = new Server(
-  { name: "btc-wallet", version: "0.1.0" },
-  { capabilities: { tools: {} } },
-);
-
-// ─── tools/list ──────────────────────────────────────────────────────────────
-
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+const handleListTools = async () => ({
   tools: [
     {
       name: "create_wallet",
@@ -209,11 +204,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
   ],
-}));
+});
 
-// ─── tools/call ──────────────────────────────────────────────────────────────
-
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+const handleCallTool = async (request: any) => {
   const { name, arguments: args } = request.params;
 
   try {
@@ -299,14 +292,85 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       isError: true,
     };
   }
-});
+};
+
+/** Register tool handlers on a Server instance. */
+function registerHandlers(s: Server) {
+  s.setRequestHandler(ListToolsRequestSchema, handleListTools);
+  s.setRequestHandler(CallToolRequestSchema, handleCallTool);
+}
+
+// Register on the main server (used by stdio transport)
+const server = new Server(
+  { name: "btc-wallet", version: "0.1.0" },
+  { capabilities: { tools: {} } },
+);
+registerHandlers(server);
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error(`btc-wallet MCP server running (${config.arkadeNetwork} @ ${config.arkadeServer})`);
+  const port = process.env.PORT;
+
+  if (port) {
+    // ── HTTP transport (deployed — Railway, Claude Cowork) ──
+    const app = express();
+    app.use(express.json());
+
+    // Health check
+    app.get("/", (_req, res) => {
+      res.json({ name: "btc-wallet", version: "0.1.0", status: "ok" });
+    });
+
+    // MCP endpoint — one transport per session
+    const sessions = new Map<string, { server: Server; transport: StreamableHTTPServerTransport }>();
+
+    app.all("/mcp", async (req, res) => {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+      if (req.method === "GET" || (req.method === "DELETE" && sessionId)) {
+        const session = sessionId ? sessions.get(sessionId) : undefined;
+        if (session) {
+          await session.transport.handleRequest(req, res);
+        } else {
+          res.status(400).json({ error: "No session" });
+        }
+        return;
+      }
+
+      // POST — new or existing session
+      if (sessionId && sessions.has(sessionId)) {
+        await sessions.get(sessionId)!.transport.handleRequest(req, res, req.body);
+        return;
+      }
+
+      // New session
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID(),
+        onsessioninitialized: (id) => {
+          sessions.set(id, { server: sessionServer, transport });
+        },
+      });
+
+      const sessionServer = new Server(
+        { name: "btc-wallet", version: "0.1.0" },
+        { capabilities: { tools: {} } },
+      );
+      registerHandlers(sessionServer);
+
+      await sessionServer.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
+
+    app.listen(Number(port), "0.0.0.0", () => {
+      console.error(`btc-wallet MCP server (HTTP) on port ${port} (${config.arkadeNetwork} @ ${config.arkadeServer})`);
+    });
+  } else {
+    // ── Stdio transport (local — Claude Code) ──
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error(`btc-wallet MCP server running (${config.arkadeNetwork} @ ${config.arkadeServer})`);
+  }
 }
 
 main().catch((err) => {

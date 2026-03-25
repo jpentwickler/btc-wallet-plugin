@@ -1,0 +1,7 @@
+{
+  "name": "btc-wallet",
+  "version": "1.0.0",
+  "description": "BTC wallet for AI agents — manage Bitcoin, build escrows, sign multi-party releases on Arkade",
+  "author": { "name": "btc-wallet-plugin" },
+  "keywords": ["bitcoin", "wallet", "arkade", "escrow", "mcp"]
+}
