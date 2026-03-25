@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "btc-wallet": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"],
+      "env": {
+        "ARKADE_SERVER": "https://mutinynet.arkade.sh",
+        "ARKADE_NETWORK": "mutinynet",
+        "ARKADE_EXPLORER": "https://explorer.mutinynet.arkade.sh"
+      }
+    }
+  }
+}
