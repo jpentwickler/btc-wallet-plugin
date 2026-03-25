@@ -8,7 +8,7 @@
 
 ## Story Points: 3
 
-## Status: IN PROGRESS
+## Status: DONE
 
 ## Repository
 
