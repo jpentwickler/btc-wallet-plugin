@@ -8,7 +8,7 @@
 
 ## Story Points: 2
 
-## Status: TODO
+## Status: DONE
 
 ## Context
 
