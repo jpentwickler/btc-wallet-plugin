@@ -267,7 +267,9 @@ export class EscrowManager {
    * Path order: [A, B1, B2, C]
    */
   private getPathScript(escrowScript: VtxoScript, path: string): Uint8Array {
-    const paths = escrowScript.exitPaths();
+    // Use escrowScript.scripts (raw scripts in constructor order) instead of
+    // exitPaths() which filters out non-CSV/CLTV leaves (Path A and B1).
+    const scripts = escrowScript.scripts;
     const pathIndex: Record<string, number> = {
       A: 0,
       B1: 1,
@@ -278,10 +280,10 @@ export class EscrowManager {
     if (idx === undefined) {
       throw new Error(`Invalid path: ${path}. Must be A, B1, B2, or C.`);
     }
-    if (!paths[idx]) {
-      throw new Error(`Path ${path} not found in escrow script (${paths.length} paths available)`);
+    if (!scripts[idx]) {
+      throw new Error(`Path ${path} not found in escrow script (${scripts.length} scripts available)`);
     }
-    return paths[idx].script ?? paths[idx];
+    return scripts[idx];
   }
 
   /**
