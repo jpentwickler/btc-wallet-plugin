@@ -180,6 +180,23 @@ const handleListTools = async () => ({
       },
     },
     {
+      name: "sign_checkpoints",
+      description:
+        "Sign Arkade checkpoint PSBTs for escrow release finalization. Called after the Protocol Service returns checkpoint PSBTs from the Arkade server.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          checkpointPsbts: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Array of base64-encoded checkpoint PSBTs to sign",
+          },
+        },
+        required: ["checkpointPsbts"],
+      },
+    },
+    {
       name: "verify_vtxo",
       description:
         "Check if a specific VTXO exists on the Arkade network. Returns existence status and explorer link.",
@@ -266,6 +283,13 @@ const handleCallTool = async (request: any) => {
           changeAddress: args?.changeAddress as string | undefined,
           changeSats: args?.changeSats as number | undefined,
           psbt: args?.psbt as string | undefined,
+        });
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+
+      case "sign_checkpoints": {
+        const result = await escrowManager.signCheckpoints({
+          checkpointPsbts: args?.checkpointPsbts as string[],
         });
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       }

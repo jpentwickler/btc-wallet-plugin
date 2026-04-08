@@ -24,6 +24,8 @@ import type {
   LockCollateralResult,
   SignReleaseParams,
   SignReleaseResult,
+  SignCheckpointsParams,
+  SignCheckpointsResult,
   VerifyVtxoParams,
   VerifyVtxoResult,
 } from "./types.js";
@@ -258,6 +260,27 @@ export class EscrowManager {
     } catch {
       return { exists: false, valueSats: 0, script: "", explorerUrl };
     }
+  }
+
+  // ─── sign_checkpoints ──────────────────────────────────────────────────────
+
+  async signCheckpoints(params: SignCheckpointsParams): Promise<SignCheckpointsResult> {
+    const identity = this.wallet.getIdentity();
+    const pubkey = await identity.xOnlyPublicKey();
+
+    const signedCheckpoints = await Promise.all(
+      params.checkpointPsbts.map(async (cpB64: string) => {
+        const cpTx = Transaction.fromPSBT(base64.decode(cpB64));
+        const signed = await identity.sign(cpTx, [0]);
+        return base64.encode(signed.toPSBT());
+      }),
+    );
+
+    return {
+      signedCheckpoints,
+      signedBy: hex.encode(pubkey),
+      count: signedCheckpoints.length,
+    };
   }
 
   // ─── Helpers ───────────────────────────────────────────────────────────────

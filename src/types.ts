@@ -26,7 +26,7 @@ export interface GetVtxosParams {
 export interface BuildEscrowParams {
   borrowerPubkey: string;
   lenderPubkey: string;
-  serverPubkey: string;
+  serverPubkey?: string;
   cltvDays?: number;
   csvDays?: number;
 }
@@ -125,4 +125,14 @@ export interface VerifyVtxoResult {
   valueSats: number;
   script: string;
   explorerUrl: string;
+}
+
+export interface SignCheckpointsParams {
+  checkpointPsbts: string[];
+}
+
+export interface SignCheckpointsResult {
+  signedCheckpoints: string[];
+  signedBy: string;
+  count: number;
 }
