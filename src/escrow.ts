@@ -10,6 +10,7 @@ import {
   CLTVMultisigTapscript,
   CSVMultisigTapscript,
   VtxoScript,
+  DefaultVtxo,
   Transaction,
   buildOffchainTx,
   networks,
@@ -186,13 +187,14 @@ export class EscrowManager {
       ? hex.encode(pubkey) // If recipient is an arkade address, use our pubkey
       : params.recipientAddress);
 
-    // For the recipient, build a standard VTXO script
-    // The recipientAddress is the destination arkade address
-    const recipientScript = new VtxoScript([
-      MultisigTapscript.encode({
-        pubkeys: [recipientPubkey, this.wallet.serverPubkey],
-      }).script,
-    ]);
+    // Build recipient VTXO using DefaultVtxo.Script (2-leaf: forfeit + exit)
+    // This matches the wallet SDK's own script derivation so the recipient
+    // wallet recognizes the VTXO in its balance.
+    const recipientScript = new DefaultVtxo.Script({
+      pubKey: recipientPubkey,
+      serverPubKey: this.wallet.serverPubkey,
+      csvTimelock: this.wallet.getExitTimelock(),
+    });
 
     // Build outputs
     const outputs: Array<{ amount: bigint; script: Uint8Array }> = [
@@ -205,11 +207,11 @@ export class EscrowManager {
     // Add change output for two-output transactions (fair split)
     if (params.changeAddress && params.changeSats) {
       const changePubkey = hex.decode(params.changeAddress);
-      const changeScript = new VtxoScript([
-        MultisigTapscript.encode({
-          pubkeys: [changePubkey, this.wallet.serverPubkey],
-        }).script,
-      ]);
+      const changeScript = new DefaultVtxo.Script({
+        pubKey: changePubkey,
+        serverPubKey: this.wallet.serverPubkey,
+        csvTimelock: this.wallet.getExitTimelock(),
+      });
       outputs.push({
         amount: BigInt(params.changeSats),
         script: changeScript.pkScript,

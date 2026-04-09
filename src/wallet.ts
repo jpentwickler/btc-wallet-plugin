@@ -73,6 +73,15 @@ export class ArkadeWallet {
     return this.wallet;
   }
 
+  /** Get the exit timelock matching the SDK wallet's DefaultVtxo derivation. */
+  getExitTimelock(): { value: bigint; type: "blocks" | "seconds" } {
+    const delay = BigInt(this.serverInfo.unilateralExitDelay);
+    return {
+      value: delay,
+      type: delay < 512n ? "blocks" : "seconds",
+    };
+  }
+
   /** Get the network HRP for address derivation. */
   getNetworkHrp(): string {
     return (networks as any)[this.config.arkadeNetwork]?.hrp ?? "tark";
