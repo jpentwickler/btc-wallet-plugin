@@ -16,6 +16,8 @@ import {
   Wallet,
   Ramps,
   networks,
+  InMemoryWalletRepository,
+  InMemoryContractRepository,
 } from "@arkade-os/sdk";
 import { hex } from "@scure/base";
 
@@ -134,6 +136,10 @@ export class ArkadeWallet {
       identity: this.identity,
       arkServerUrl: this.config.arkadeServer,
       esploraUrl: this.getEsploraUrl(),
+      storage: {
+        walletRepository: new InMemoryWalletRepository(),
+        contractRepository: new InMemoryContractRepository(),
+      },
     });
 
     this.address = await this.wallet.getBoardingAddress();
