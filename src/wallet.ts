@@ -91,6 +91,9 @@ export class ArkadeWallet {
 
   /** Get the esplora URL for the configured network. */
   private getEsploraUrl(): string {
+    if (this.config.esploraUrl) {
+      return this.config.esploraUrl;
+    }
     if (this.config.arkadeNetwork === "regtest") {
       // Local regtest uses chopsticks on port 3000
       const url = new URL(this.config.arkadeServer);

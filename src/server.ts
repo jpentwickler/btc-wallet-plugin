@@ -25,6 +25,7 @@ const config: WalletConfig = {
   arkadeNetwork: process.env.ARKADE_NETWORK ?? "mutinynet",
   arkadeExplorer:
     process.env.ARKADE_EXPLORER ?? "https://explorer.mutinynet.arkade.sh",
+  esploraUrl: process.env.ESPLORA_URL,
   walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
 };
 

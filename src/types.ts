@@ -8,6 +8,7 @@ export interface WalletConfig {
   arkadeServer: string;
   arkadeNetwork: string;
   arkadeExplorer: string;
+  esploraUrl?: string;
   walletPrivateKey?: string;
 }
 
