@@ -12,7 +12,12 @@
 import { EventSource } from "eventsource";
 (globalThis as any).EventSource = EventSource;
 
-import { SingleKey, Wallet } from "@arkade-os/sdk";
+import {
+  SingleKey,
+  Wallet,
+  InMemoryWalletRepository,
+  InMemoryContractRepository,
+} from "@arkade-os/sdk";
 import { hex } from "@scure/base";
 
 const network = process.argv.includes("--network")
@@ -47,6 +52,11 @@ async function main() {
     identity,
     arkServerUrl: urls.ark,
     esploraUrl: urls.esplora,
+    storage: {
+      walletRepository: new InMemoryWalletRepository(),
+      contractRepository: new InMemoryContractRepository(),
+    },
+    settlementConfig: false,
   });
   const boardingAddress = await wallet.getBoardingAddress();
 

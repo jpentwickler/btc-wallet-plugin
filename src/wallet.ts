@@ -143,6 +143,7 @@ export class ArkadeWallet {
         walletRepository: new InMemoryWalletRepository(),
         contractRepository: new InMemoryContractRepository(),
       },
+      settlementConfig: false,
     });
 
     this.address = await this.wallet.getBoardingAddress();
