@@ -7,7 +7,6 @@
 
 import {
   MultisigTapscript,
-  CLTVMultisigTapscript,
   CSVMultisigTapscript,
   VtxoScript,
   DefaultVtxo,
@@ -49,36 +48,32 @@ export class EscrowManager {
       ? hex.decode(params.serverPubkey)
       : this.wallet.serverPubkey;
 
-    const cltvDays = params.cltvDays ?? 7;
-    const csvDays = params.csvDays ?? 14;
+    // ADR-004: all 4 paths use plain MultisigTapscript with no on-chain timelocks.
+    // Timing enforcement (LTV, default grace, lender-cooperation grace) is server-gated
+    // by the Protocol Service state machine. cltvDays/csvDays params are accepted for
+    // backward compatibility but ignored — see project memory project_arkade_csv_cltv_rule.
 
     // Path A: cooperative release — borrower + lender + server (3-of-3)
     const pathA = MultisigTapscript.encode({
       pubkeys: [borrowerPub, lenderPub, serverPub],
     }).script;
 
-    // Path B1: emergency liquidation — lender + server (2-of-2, no timelock)
+    // Path B1: emergency liquidation — lender + server (2-of-2, server-gated by LTV)
     const pathB1 = MultisigTapscript.encode({
       pubkeys: [lenderPub, serverPub],
     }).script;
 
-    // Path B2: default backstop — lender + server, CLTV absolute timelock
-    const nowSecs = BigInt(Math.floor(Date.now() / 1000));
-    const cltvSecs = BigInt(cltvDays) * 86400n;
-    const pathB2 = CLTVMultisigTapscript.encode({
+    // Path B2: default backstop — lender + server (2-of-2, server-gated by default state)
+    const pathB2 = MultisigTapscript.encode({
       pubkeys: [lenderPub, serverPub],
-      absoluteTimelock: nowSecs + cltvSecs,
     }).script;
 
-    // Path C: borrower safety exit — borrower + server, CSV relative timelock
-    // BIP68: value must be multiple of 512 when using seconds
-    const csvSecs = Math.ceil((csvDays * 86400) / 512) * 512;
-    const pathC = CSVMultisigTapscript.encode({
+    // Path C: borrower safety exit — borrower + server (2-of-2, server-gated by repaid + lender-unresponsive state)
+    const pathC = MultisigTapscript.encode({
       pubkeys: [borrowerPub, serverPub],
-      timelock: { type: "seconds" as const, value: BigInt(csvSecs) },
     }).script;
 
-    // Combine into VtxoScript
+    // Combine into VtxoScript (path order A=0, B1=1, B2=2, C=3 is load-bearing — decoder + BACK-014 gate rely on it)
     const escrowScript = new VtxoScript([pathA, pathB1, pathB2, pathC]);
 
     // Derive escrow address
@@ -89,10 +84,10 @@ export class EscrowManager {
       escrowScript: hex.encode(escrowScript.encode()),
       escrowAddress,
       paths: {
-        A: "borrower + lender + server (anytime)",
-        B1: "lender + server (emergency, anytime)",
-        B2: `lender + server (after ${cltvDays}-day CLTV)`,
-        C: `borrower + server (after ${csvDays}-day CSV)`,
+        A: "borrower + lender + server (cooperative, anytime)",
+        B1: "lender + server (LTV-gated by server)",
+        B2: "lender + server (default-state-gated by server)",
+        C: "borrower + server (repaid-state-gated by server)",
       },
     };
   }

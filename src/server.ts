@@ -88,7 +88,7 @@ const handleListTools = async () => ({
     {
       name: "build_escrow",
       description:
-        "Construct a 4-path escrow VtxoScript for a lending protocol. Paths: A (cooperative), B1 (emergency), B2 (CLTV default), C (CSV safety exit).",
+        "Construct a 4-path escrow VtxoScript for a lending protocol. All paths are plain MultisigTapscript (no on-chain timelocks); timing enforcement is server-gated by the Protocol Service. Paths: A (cooperative 3-of-3), B1 (LTV liquidation 2-of-2), B2 (default backstop 2-of-2), C (borrower safety exit 2-of-2).",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -107,11 +107,11 @@ const handleListTools = async () => ({
           },
           cltvDays: {
             type: "number",
-            description: "Path B2 CLTV timelock in days (default: 7)",
+            description: "DEPRECATED: ignored. Retained for backward compatibility with callers. All time enforcement is server-gated (ADR-004).",
           },
           csvDays: {
             type: "number",
-            description: "Path C CSV timelock in days (default: 14)",
+            description: "DEPRECATED: ignored. Retained for backward compatibility with callers. All time enforcement is server-gated (ADR-004).",
           },
         },
         required: ["borrowerPubkey", "lenderPubkey"],
